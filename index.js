@@ -1,6 +1,8 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 
+const db = require("./db.js");
+
 // Creating an express application
 const app = express();
 
@@ -14,6 +16,28 @@ app.get('/', function (req, res) {
   });
 });
 
+
+// Get all loan applications
+app.get('/loans', function (req, res) {
+
+  db.serialize(() => {
+    db.all(`SELECT * from loans`, (error, rows) => {
+      if (error) {
+        res.json({
+          status: false,
+          error: error
+        })
+      } else {
+        res.json({
+          status: true,
+          loans: rows
+        })
+      }
+    })
+  })
+
+
+});
 
 // POST API for new loan application
 app.post('/new-loan', function (req, res) {
@@ -36,7 +60,7 @@ app.post('/new-loan', function (req, res) {
     return sendErrorResponse(res, 'Please provide firstname')
   }
 
-  if(!lastName) {
+  if (!lastName) {
     // return res.status(400).json({
     //   status: false,
     //   error: 'Please provide lastname'
@@ -44,20 +68,20 @@ app.post('/new-loan', function (req, res) {
     return sendErrorResponse(res, 'Please provide lastname')
   }
 
-  if(!amount) {
+  if (!amount) {
     // return res.status(400).json({
     //   status: false,
     //   error: 'Please provide loan amount'
     // });
     return sendErrorResponse(res, 'Please provide loan amount')
-    
+
   }
 
-  if(!email) {
+  if (!email) {
     return sendErrorResponse(res, 'Please provide email address')
   }
 
-  if(!purpose) {
+  if (!purpose) {
     return sendErrorResponse(res, 'Please define purpose of applying loan')
   }
 
