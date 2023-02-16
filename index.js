@@ -21,7 +21,8 @@ app.get('/', function (req, res) {
 app.get('/loans', function (req, res) {
 
   db.serialize(() => {
-    db.all(`SELECT * from loans`, (error, rows) => {
+    const selectQuery = `SELECT * from loans`
+    db.all(selectQuery, (error, rows) => {
       if (error) {
         res.json({
           status: false,
@@ -35,7 +36,6 @@ app.get('/loans', function (req, res) {
       }
     })
   })
-
 
 });
 
@@ -85,13 +85,92 @@ app.post('/new-loan', function (req, res) {
     return sendErrorResponse(res, 'Please define purpose of applying loan')
   }
 
+  const insertSQL = `INSERT INTO loans (
+    firstname,
+    lastname,
+    email,
+    loan_amount,
+    purpose
+  ) VALUES (
+    "${firstName}",
+    "${lastName}",
+    "${email}",
+    "${amount}",
+    "${purpose}"
+  )`;
 
-  res.json({
-    status: true,
-    message: "New Loan application created...",
-    data: loanData
-  });
+  db.serialize(() => {
+    db.exec(insertSQL, (error) => {
+      if (error) {
+        res.status(400).json({
+          status: false,
+          error: error
+        })
+      } else {
+        res.json({
+          status: true,
+          message: "New Loan application created...",
+          // data: loanData,
+          // sql: insertSQL
+        });
+      }
+    })
+  })
 });
+
+app.get('/loans/:id', function (req, res) {
+  const loan_id = req.params.id;
+
+  const sql = `SELECT * from loans WHERE loan_id=${loan_id};`;
+  db.serialize(() => {
+    // get(sql: string, callback?: (err: Error | null, row: any) => void): this;
+    db.get(sql, (err, row) => {
+      if (err || !row) {
+        res
+          .status(400)
+          .json({
+            status: false,
+            error: `Unable to find loan with id: ${loan_id}`
+          })
+      } else {
+        res.json({
+          status: true,
+          loan: row
+        })
+      }
+    })
+  })
+})
+
+app.post('/loans/:id', function (req, res) {
+  const loan_id = req.params.id;
+  const requestBody = req.body;
+  const status = requestBody.status;
+
+  const sql = `
+    UPDATE loans
+    SET status="${status}"
+    WHERE loan_id=${loan_id}
+  `;
+
+  db.serialize(function() {
+    db.exec(sql, (error) => {
+      console.log(error)
+      if(error) {
+        res.status(400).json({
+          status: false,
+          sql,
+          error: `Error while updating the loan for ID: ${loan_id}`
+        })
+      } else {
+        res.json({
+          status: true,
+          message: "Loan Details updated..."
+        })
+      }
+    })
+  })
+})
 
 
 function sendErrorResponse(response, errorMessage) {
